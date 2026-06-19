@@ -3,6 +3,8 @@ export class RecordList {
     this.root = root;
     this.records = [];
     this.deleteMode = false;
+    this.onPlay = null;
+    this.onToggleDelete = null;
   }
 
   setDeleteMode(enabled) {
@@ -13,6 +15,11 @@ export class RecordList {
   setRecords(records) {
     this.records = records;
     this.render();
+  }
+
+  setHandlers({ onPlay, onToggleDelete }) {
+    this.onPlay = onPlay;
+    this.onToggleDelete = onToggleDelete;
   }
 
   render() {
@@ -31,16 +38,22 @@ export class RecordList {
       item.className = `record-item${record.pendingDelete ? ' pending-delete' : ''}`;
       item.innerHTML = `
         <span class="record-index">${index + 1}</span>
-        <button class="play-button" type="button">▶</button>
+        <button class="play-button" type="button" aria-label="播放第 ${index + 1} 個錄音">▶</button>
         <div class="record-meta">
           <strong>${record.fileName}</strong>
           <span>${new Date(record.createdAt).toLocaleString('zh-TW')}</span>
         </div>
       `;
 
+      item.querySelector('.play-button').addEventListener('click', event => {
+        event.stopPropagation();
+        this.onPlay?.(record);
+      });
+
       if (this.deleteMode) {
         item.addEventListener('click', () => {
           record.pendingDelete = !record.pendingDelete;
+          this.onToggleDelete?.(record);
           this.render();
         });
       }
