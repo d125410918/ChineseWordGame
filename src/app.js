@@ -19,6 +19,7 @@ const recordButton = document.getElementById('recordButton');
 const playAllButton = document.getElementById('playAllButton');
 const saveButton = document.getElementById('saveButton');
 const cancelButton = document.getElementById('cancelButton');
+const addSpeakerButton = document.getElementById('addSpeakerButton');
 const helpDialog = document.getElementById('helpDialog');
 const currentSymbol = document.getElementById('currentSymbol');
 const recordCount = document.getElementById('recordCount');
@@ -58,7 +59,12 @@ machine.register('phonetic_select', {
   }
 });
 machine.register('recording', new RecordingState(context));
-machine.register('record_preview', {});
+machine.register('record_preview', {
+  enter() {
+    stateLabel.textContent = '狀態：可播放檢查';
+    appRoot.dataset.state = 'record_preview';
+  }
+});
 machine.register('delete_mode', new DeleteModeState(context));
 machine.register('pending_save', {
   enter() {
@@ -86,40 +92,41 @@ machine.register('error', {
 });
 
 speakerManager.setSpeakers(defaultSpeakers);
+speakerManager.setChangeHandler(async speaker => {
+  if (speaker) {
+    await storage.put('speakers', speaker);
+  }
+  await loadCurrentRecords();
+});
+
 recordList.setHandlers({
-  onPlay: record => player.playBlob(record.blob),
+  onPlay: async record => {
+    try {
+      if (!record.blob) {
+        machine.change('error', { message: '此錄音沒有可播放的音檔資料' });
+        return;
+      }
+      await player.playBlob(record.blob);
+      machine.change('record_preview');
+    } catch (error) {
+      machine.change('error', { message: error.message });
+    }
+  },
   onToggleDelete: () => machine.change('pending_save')
 });
+
 machine.change('idle');
 
 await initializeStorage();
 await loadCurrentRecords();
-
-phonetics.forEach(symbol => {
-  const card = document.createElement('button');
-  card.className = 'phonetic-card';
-  card.type = 'button';
-  card.dataset.symbol = symbol;
-  card.innerHTML = `
-    <div class="symbol">${symbol}</div>
-    <div class="counter" data-counter="${symbol}">0/10</div>
-    <div class="mic">🎤</div>
-  `;
-
-  card.addEventListener('click', async () => {
-    selectedPhonetic = symbol;
-    currentSymbol.textContent = symbol;
-    machine.change('phonetic_select');
-    await loadCurrentRecords();
-  });
-
-  grid.appendChild(card);
-});
+createPhoneticButtons();
 
 recordButton.addEventListener('click', async () => {
   try {
+    recordButton.disabled = true;
+
     if (!isRecording) {
-      const currentRecords = getCurrentRecords();
+      const currentRecords = getCurrentRecords().filter(record => !record.pendingDelete);
       if (currentRecords.length >= 10) {
         machine.change('error', { message: '此注音已達 10 個錄音上限' });
         return;
@@ -129,12 +136,17 @@ recordButton.addEventListener('click', async () => {
       recorder.start();
       isRecording = true;
       recordButton.textContent = '停止錄音';
+      recordButton.disabled = false;
       machine.change('recording');
       return;
     }
 
     const blob = await recorder.stop();
     const speaker = speakerManager.getActiveSpeaker();
+    if (!speaker) {
+      throw new Error('尚未選擇錄音者');
+    }
+
     const metadata = createAudioMetadata({
       speakerId: speaker.id,
       phonetic: selectedPhonetic,
@@ -146,16 +158,29 @@ recordButton.addEventListener('click', async () => {
     setCurrentRecords(currentRecords);
     isRecording = false;
     recordButton.textContent = '開始錄音';
-    machine.change('pending_save');
+    recordButton.disabled = false;
+    machine.change('record_preview');
   } catch (error) {
     isRecording = false;
     recordButton.textContent = '開始錄音';
+    recordButton.disabled = false;
     machine.change('error', { message: error.message });
   }
 });
 
 playAllButton.addEventListener('click', async () => {
-  await player.playQueue(getCurrentRecords().filter(record => !record.pendingDelete));
+  try {
+    const playableRecords = getCurrentRecords().filter(record => !record.pendingDelete && record.blob);
+    if (playableRecords.length === 0) {
+      machine.change('error', { message: '目前沒有可播放的錄音' });
+      return;
+    }
+
+    await player.playQueue(playableRecords);
+    machine.change('record_preview');
+  } catch (error) {
+    machine.change('error', { message: error.message });
+  }
 });
 
 deleteModeButton.addEventListener('click', () => {
@@ -165,25 +190,46 @@ deleteModeButton.addEventListener('click', () => {
 });
 
 saveButton.addEventListener('click', async () => {
-  machine.change('saving');
-  const records = getCurrentRecords();
+  try {
+    machine.change('saving');
+    const records = getCurrentRecords();
 
-  for (const record of records) {
-    if (record.pendingDelete) {
-      await storage.delete('recordings', record.id);
-    } else {
-      await storage.put('recordings', record);
+    for (const record of records) {
+      if (record.pendingDelete) {
+        await storage.delete('recordings', record.id);
+      } else {
+        await storage.put('recordings', record);
+      }
     }
-  }
 
-  setCurrentRecords(records.filter(record => !record.pendingDelete));
-  machine.change('idle');
+    setCurrentRecords(records.filter(record => !record.pendingDelete));
+    recordList.setDeleteMode(false);
+    machine.change('idle');
+  } catch (error) {
+    machine.change('error', { message: error.message });
+  }
 });
 
 cancelButton.addEventListener('click', async () => {
   recordList.setDeleteMode(false);
   machine.change('idle');
   await loadCurrentRecords();
+});
+
+addSpeakerButton.addEventListener('click', async () => {
+  const name = prompt('請輸入新增錄音者名稱');
+  if (name === null) return;
+
+  const speaker = speakerManager.addSpeaker(name);
+  if (!speaker) {
+    machine.change('error', { message: '錄音者名稱不能空白' });
+    return;
+  }
+
+  await storage.put('speakers', speaker);
+  await loadCurrentRecords();
+  machine.change('speaker_select');
+  stateLabel.textContent = `狀態：已新增錄音者 ${speaker.name}`;
 });
 
 document.getElementById('helpButton').addEventListener('click', () => helpDialog.showModal());
@@ -193,8 +239,14 @@ async function initializeStorage() {
   machine.change('loading');
   await storage.initialize();
 
-  for (const speaker of defaultSpeakers) {
-    await storage.put('speakers', speaker);
+  const storedSpeakers = await storage.getAll('speakers');
+  if (storedSpeakers.length > 0) {
+    speakerManager.setSpeakers(storedSpeakers);
+  } else {
+    for (const speaker of defaultSpeakers) {
+      await storage.put('speakers', speaker);
+    }
+    speakerManager.setSpeakers(defaultSpeakers);
   }
 }
 
@@ -203,8 +255,33 @@ async function loadCurrentRecords() {
   if (!speaker) return;
 
   const records = await storage.getRecordingsBySpeakerAndPhonetic(speaker.id, selectedPhonetic);
-  setCurrentRecords(records);
+  setCurrentRecords(records.map(record => ({ ...record, pendingDelete: false })));
   machine.change('idle');
+}
+
+function createPhoneticButtons() {
+  grid.innerHTML = '';
+
+  phonetics.forEach(symbol => {
+    const card = document.createElement('button');
+    card.className = 'phonetic-card';
+    card.type = 'button';
+    card.dataset.symbol = symbol;
+    card.innerHTML = `
+      <div class="symbol">${symbol}</div>
+      <div class="counter" data-counter="${symbol}">0/10</div>
+      <div class="mic">🎤</div>
+    `;
+
+    card.addEventListener('click', async () => {
+      selectedPhonetic = symbol;
+      currentSymbol.textContent = symbol;
+      machine.change('phonetic_select');
+      await loadCurrentRecords();
+    });
+
+    grid.appendChild(card);
+  });
 }
 
 function getCurrentKey() {
@@ -220,4 +297,12 @@ function setCurrentRecords(records) {
   recordsByKey.set(getCurrentKey(), records);
   recordList.setRecords(records);
   recordCount.textContent = `${records.filter(record => !record.pendingDelete).length}/10`;
+  updateCurrentCounter(records);
+}
+
+function updateCurrentCounter(records) {
+  const counter = document.querySelector(`[data-counter="${selectedPhonetic}"]`);
+  if (counter) {
+    counter.textContent = `${records.filter(record => !record.pendingDelete).length}/10`;
+  }
 }
