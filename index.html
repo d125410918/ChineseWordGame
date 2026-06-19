@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>注音錄音管理｜Chinese Word Game</title>
+  <link rel="stylesheet" href="./src/styles.css" />
+</head>
+<body>
+  <div id="app" class="app-shell" data-state="idle">
+    <aside class="sidebar" aria-label="錄音者管理">
+      <section class="brand-card">
+        <div class="brand-icon" aria-hidden="true">🎙</div>
+        <div>
+          <h1>注音錄音管理</h1>
+          <p>管理注音發音錄音檔案</p>
+        </div>
+      </section>
+
+      <section class="panel recorder-panel">
+        <div class="section-title">
+          <span class="title-icon" aria-hidden="true">👥</span>
+          <h2>錄音者管理</h2>
+        </div>
+
+        <label class="select-label" for="speakerSelect">選擇錄音者</label>
+        <select id="speakerSelect" class="speaker-select" aria-label="選擇錄音者"></select>
+
+        <div id="speakerList" class="speaker-list"></div>
+
+        <button id="addSpeakerButton" class="add-speaker-button" type="button">
+          <span aria-hidden="true">＋</span>
+          新增錄音者
+        </button>
+      </section>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <div class="limit-note"><span aria-hidden="true">i</span> 每個注音最多錄音 10 個</div>
+        <button id="helpButton" class="help-button" type="button">使用說明</button>
+      </header>
+
+      <section class="workspace">
+        <section class="phonetic-board panel" aria-label="注音錄音區">
+          <div class="board-header">
+            <div>
+              <strong class="ribbon">注音錄音</strong>
+              <span class="board-help">點擊下方按鈕進行錄音，錄音檔會自動加入到該注音後面。</span>
+            </div>
+            <div id="stateBadge" class="state-badge">狀態：待命</div>
+          </div>
+
+          <div id="phoneticGrid" class="phonetic-grid"></div>
+        </section>
+
+        <aside class="record-panel panel" aria-label="錄音列表">
+          <div class="record-toolbar">
+            <h2>錄音列表</h2>
+            <button id="deleteModeButton" class="delete-mode-button" type="button">刪除模式</button>
+          </div>
+
+          <div class="current-phonetic">
+            <div>目前注音：<strong id="currentSymbol">ㄅ</strong></div>
+            <div>錄音總數：<span id="recordCount">0/10</span></div>
+          </div>
+
+          <div id="recordList" class="record-list"></div>
+
+          <div id="deleteHint" class="delete-hint" hidden>
+            <strong>刪除模式已啟動</strong>
+            <span>點擊要刪除的錄音，確認保存後才會套用變更。</span>
+          </div>
+
+          <button id="saveButton" class="save-button" type="button">確認保存變更</button>
+          <button id="cancelButton" class="cancel-button" type="button">取消</button>
+        </aside>
+      </section>
+    </main>
+
+    <dialog id="helpDialog" class="help-dialog">
+      <h2>使用說明</h2>
+      <p>目前版本先建立基本版面與狀態機欄位。錄音、播放、刪除與保存流程已保留事件入口，後續可接上瀏覽器 MediaRecorder、IndexedDB 或雲端儲存。</p>
+      <button id="closeHelpButton" type="button">關閉</button>
+    </dialog>
+  </div>
+
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
