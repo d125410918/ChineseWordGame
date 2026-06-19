@@ -8,80 +8,152 @@
 </head>
 <body>
   <div id="app" class="app-shell" data-state="idle">
-    <aside class="sidebar" aria-label="錄音者管理">
-      <section class="brand-card">
-        <div class="brand-icon" aria-hidden="true">🎙</div>
-        <div>
-          <h1>注音錄音管理</h1>
-          <p>管理注音發音錄音檔案</p>
-        </div>
-      </section>
-
-      <section class="panel recorder-panel">
-        <div class="section-title">
-          <span class="title-icon" aria-hidden="true">👥</span>
-          <h2>錄音者管理</h2>
-        </div>
-
-        <label class="select-label" for="speakerSelect">選擇錄音者</label>
-        <select id="speakerSelect" class="speaker-select" aria-label="選擇錄音者"></select>
-
-        <div id="speakerList" class="speaker-list"></div>
-
-        <button id="addSpeakerButton" class="add-speaker-button" type="button">
-          <span aria-hidden="true">＋</span>
-          新增錄音者
-        </button>
-      </section>
-    </aside>
-
-    <main class="main-area">
-      <header class="topbar">
-        <div class="limit-note"><span aria-hidden="true">i</span> 每個注音最多錄音 10 個</div>
-        <button id="helpButton" class="help-button" type="button">使用說明</button>
-      </header>
-
-      <section class="workspace">
-        <section class="phonetic-board panel" aria-label="注音錄音區">
-          <div class="board-header">
-            <div>
-              <strong class="ribbon">注音錄音</strong>
-              <span class="board-help">點擊下方按鈕選擇注音，再使用右側或下方錄音鍵。</span>
-            </div>
-            <div id="stateBadge" class="state-badge">狀態：待命</div>
+    <section class="desktop-layout" aria-label="電腦版注音錄音管理">
+      <aside class="sidebar" aria-label="錄音者管理">
+        <section class="brand-card">
+          <div class="brand-icon" aria-hidden="true">🎙</div>
+          <div>
+            <h1>注音錄音管理</h1>
+            <p>管理注音發音錄音檔案</p>
           </div>
-
-          <div id="phoneticGrid" class="phonetic-grid"></div>
         </section>
 
-        <aside class="record-panel panel" aria-label="錄音列表">
-          <div class="record-toolbar">
-            <h2>錄音列表</h2>
-            <button id="deleteModeButton" class="delete-mode-button" type="button">刪除模式</button>
+        <section class="panel recorder-panel">
+          <div class="section-title">
+            <span class="title-icon" aria-hidden="true">👥</span>
+            <h2>錄音者管理</h2>
           </div>
 
-          <div class="current-phonetic">
-            <div>目前注音：<strong id="currentSymbol">ㄅ</strong></div>
-            <div>錄音總數：<span id="recordCount">0/10</span></div>
+          <label class="select-label" for="speakerSelect">選擇錄音者</label>
+          <select id="speakerSelect" class="speaker-select" aria-label="選擇錄音者"></select>
+
+          <div id="speakerList" class="speaker-list"></div>
+
+          <button id="addSpeakerButton" class="add-speaker-button" type="button">
+            <span aria-hidden="true">＋</span>
+            新增錄音者
+          </button>
+        </section>
+      </aside>
+
+      <main class="main-area">
+        <header class="topbar">
+          <div class="limit-note"><span aria-hidden="true">i</span> 每個注音最多錄音 10 個</div>
+          <button id="helpButton" class="help-button" type="button">使用說明</button>
+        </header>
+
+        <section class="workspace">
+          <section class="phonetic-board panel" aria-label="注音錄音區">
+            <div class="board-header">
+              <div>
+                <strong class="ribbon">注音錄音</strong>
+                <span class="board-help">點擊下方按鈕選擇注音，再使用右側或下方錄音鍵。</span>
+              </div>
+              <div id="stateBadge" class="state-badge">狀態：待命</div>
+            </div>
+
+            <div id="phoneticGrid" class="phonetic-grid"></div>
+          </section>
+
+          <aside class="record-panel panel" aria-label="錄音列表">
+            <div class="record-toolbar">
+              <h2>錄音列表</h2>
+              <button id="deleteModeButton" class="delete-mode-button" type="button">刪除模式</button>
+            </div>
+
+            <div class="current-phonetic">
+              <div>目前注音：<strong id="currentSymbol">ㄅ</strong></div>
+              <div>錄音總數：<span id="recordCount">0/10</span></div>
+            </div>
+
+            <div class="record-actions">
+              <button id="recordButton" class="record-button" type="button">開始錄音</button>
+              <button id="playAllButton" class="play-all-button" type="button">連續播放</button>
+            </div>
+
+            <div id="recordList" class="record-list"></div>
+
+            <div id="deleteHint" class="delete-hint" hidden>
+              <strong>刪除模式已啟動</strong>
+              <span>點擊要刪除的錄音，確認保存後才會套用變更。</span>
+            </div>
+
+            <button id="saveButton" class="save-button" type="button">確認保存變更</button>
+            <button id="cancelButton" class="cancel-button" type="button">取消</button>
+          </aside>
+        </section>
+      </main>
+    </section>
+
+    <section class="mobile-layout" aria-label="手機版注音錄音管理">
+      <header class="mobile-topbar">
+        <button id="mobileMenuButton" class="mobile-icon-button" type="button" aria-label="開啟選單">☰</button>
+        <div class="mobile-title"><span aria-hidden="true">🎙</span>注音錄音管理</div>
+        <button id="mobileHelpButton" class="mobile-help-button" type="button">使用說明</button>
+      </header>
+
+      <main class="mobile-main">
+        <button id="mobileSpeakerCard" class="mobile-speaker-card" type="button">
+          <div class="speaker-avatar" aria-hidden="true">人</div>
+          <div>
+            <strong id="mobileSpeakerName">預設錄音者</strong>
+            <span id="mobileSpeakerDate">2024/05/20 建立</span>
           </div>
+          <span aria-hidden="true">⌄</span>
+        </button>
 
-          <div class="record-actions">
-            <button id="recordButton" class="record-button" type="button">開始錄音</button>
-            <button id="playAllButton" class="play-all-button" type="button">連續播放</button>
+        <section class="mobile-status-card panel">
+          <h2>目前注音狀態</h2>
+          <div class="mobile-status-content">
+            <div class="mobile-big-symbol" id="mobileCurrentSymbol">ㄅ</div>
+            <div class="mobile-count-block">
+              <span>已錄音</span>
+              <strong id="mobileRecordCountLarge">0 / 10</strong>
+            </div>
+            <div class="mobile-count-block">
+              <span>剩餘可錄</span>
+              <strong id="mobileRemainCount">10</strong>
+            </div>
           </div>
+          <div class="mobile-progress"><span id="mobileProgressBar"></span></div>
+          <div class="mobile-status-note"><span aria-hidden="true">i</span> 每個注音最多錄音 10 個</div>
+        </section>
 
-          <div id="recordList" class="record-list"></div>
-
-          <div id="deleteHint" class="delete-hint" hidden>
-            <strong>刪除模式已啟動</strong>
-            <span>點擊要刪除的錄音，確認保存後才會套用變更。</span>
+        <section class="mobile-record-card panel">
+          <div class="mobile-card-title">
+            <h2>錄音列表 <span id="mobileRecordListCount">(0)</span></h2>
+            <button id="mobileDeleteModeButton" class="mobile-text-button" type="button">編輯</button>
           </div>
+          <div id="mobileRecordList" class="mobile-record-list"></div>
+          <div class="mobile-add-note">＋ 錄音會自動新增到列表最後</div>
+        </section>
 
-          <button id="saveButton" class="save-button" type="button">確認保存變更</button>
-          <button id="cancelButton" class="cancel-button" type="button">取消</button>
-        </aside>
+        <section class="mobile-tip-card panel">
+          <h2>錄音小提醒</h2>
+          <p>點擊麥克風按鈕開始錄音，再次點擊按鈕停止錄音。錄音會自動加入目前注音的列表，每個注音最多可錄音 10 個。</p>
+        </section>
+      </main>
+
+      <aside class="mobile-phonetic-drawer" aria-label="選擇注音">
+        <div class="mobile-drawer-title">
+          <strong>選擇注音</strong>
+          <span id="mobilePhoneticTotal">42 個</span>
+        </div>
+        <div id="mobilePhoneticList" class="mobile-phonetic-list"></div>
+      </aside>
+
+      <section class="mobile-record-pad" aria-label="手機錄音控制">
+        <div id="mobileRecordHint">點擊開始錄音</div>
+        <button id="mobileRecordButton" class="mobile-record-button" type="button" aria-label="開始錄音">🎙</button>
+        <div id="mobileRecordTimer">00:00</div>
       </section>
-    </main>
+
+      <footer class="mobile-bottom-bar">
+        <div id="mobileChangeCount">已修改 0 筆資料</div>
+        <button id="mobileCancelButton" class="mobile-cancel-button" type="button">取消</button>
+        <button id="mobileSaveButton" class="mobile-save-button" type="button">確認保存</button>
+      </footer>
+    </section>
 
     <dialog id="helpDialog" class="help-dialog">
       <h2>使用說明</h2>
