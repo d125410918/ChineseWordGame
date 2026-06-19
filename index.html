@@ -46,7 +46,7 @@
           <div class="board-header">
             <div>
               <strong class="ribbon">注音錄音</strong>
-              <span class="board-help">點擊下方按鈕進行錄音，錄音檔會自動加入到該注音後面。</span>
+              <span class="board-help">點擊下方按鈕選擇注音，再使用右側或下方錄音鍵。</span>
             </div>
             <div id="stateBadge" class="state-badge">狀態：待命</div>
           </div>
@@ -65,6 +65,11 @@
             <div>錄音總數：<span id="recordCount">0/10</span></div>
           </div>
 
+          <div class="record-actions">
+            <button id="recordButton" class="record-button" type="button">開始錄音</button>
+            <button id="playAllButton" class="play-all-button" type="button">連續播放</button>
+          </div>
+
           <div id="recordList" class="record-list"></div>
 
           <div id="deleteHint" class="delete-hint" hidden>
@@ -80,7 +85,7 @@
 
     <dialog id="helpDialog" class="help-dialog">
       <h2>使用說明</h2>
-      <p>目前版本先建立基本版面與狀態機欄位。錄音、播放、刪除與保存流程已保留事件入口，後續可接上瀏覽器 MediaRecorder、IndexedDB 或雲端儲存。</p>
+      <p>目前版本已接入錄音、播放、刪除與 IndexedDB 本機保存骨架。正式上線時，麥克風權限仍需由使用者在瀏覽器中允許。</p>
       <button id="closeHelpButton" type="button">關閉</button>
     </dialog>
   </div>
