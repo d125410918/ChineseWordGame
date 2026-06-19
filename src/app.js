@@ -49,6 +49,8 @@ const recorder = new RecorderService();
 const player = new AudioPlayerService();
 const storage = new IndexedDBService();
 const recordsByKey = new Map();
+const dirtyKeys = new Set();
+
 let selectedPhonetic = 'ㄅ';
 let isRecording = false;
 let changedCount = 0;
@@ -77,6 +79,7 @@ machine.register('error', { enter(payload) { setStateText(`狀態：錯誤 ${pay
 
 speakerManager.setSpeakers(defaultSpeakers);
 speakerManager.setChangeHandler(async speaker => {
+  if (isRecording) return;
   if (speaker) await storage.put('speakers', speaker);
   await loadCurrentRecords();
   syncMobileSpeaker();
@@ -84,7 +87,7 @@ speakerManager.setChangeHandler(async speaker => {
 
 recordList.setHandlers({
   onPlay: playRecord,
-  onToggleDelete: () => markChanged()
+  onToggleDelete: () => markChanged(getCurrentKey())
 });
 
 machine.change('idle');
@@ -108,6 +111,7 @@ mobile.speakerCard.addEventListener('click', addSpeaker);
 document.getElementById('helpButton').addEventListener('click', () => helpDialog.showModal());
 mobile.helpButton.addEventListener('click', () => helpDialog.showModal());
 document.getElementById('closeHelpButton').addEventListener('click', () => helpDialog.close());
+window.addEventListener('beforeunload', () => player.stop());
 
 async function toggleRecording() {
   try {
@@ -135,10 +139,9 @@ async function toggleRecording() {
     if (!speaker) throw new Error('尚未選擇錄音者');
 
     const metadata = createAudioMetadata({ speakerId: speaker.id, phonetic: selectedPhonetic, blob });
-    const currentRecords = getCurrentRecords();
-    currentRecords.push(metadata);
+    const currentRecords = [...getCurrentRecords(), metadata];
     setCurrentRecords(currentRecords);
-    markChanged();
+    markChanged(getCurrentKey());
     setRecordingUi(false);
     machine.change('record_preview');
   } catch (error) {
@@ -177,28 +180,34 @@ async function playAllRecords() {
 }
 
 function toggleDeleteMode() {
+  if (isRecording) return;
   const enabled = machine.currentState !== 'delete_mode';
   recordList.setDeleteMode(enabled);
   mobile.deleteModeButton.textContent = enabled ? '完成' : '編輯';
-  renderMobileRecords(getCurrentRecords());
   machine.change(enabled ? 'delete_mode' : 'idle');
+  renderMobileRecords(getCurrentRecords());
 }
 
 async function saveChanges() {
   try {
+    if (isRecording) return;
     machine.change('saving');
-    const records = getCurrentRecords();
 
-    for (const record of records) {
-      if (record.pendingDelete) await storage.delete('recordings', record.id);
-      else await storage.put('recordings', record);
+    for (const key of [...dirtyKeys]) {
+      const records = recordsByKey.get(key) || [];
+      for (const record of records) {
+        if (record.pendingDelete) await storage.delete('recordings', record.id);
+        else await storage.put('recordings', { ...record, pendingDelete: false });
+      }
+      recordsByKey.set(key, records.filter(record => !record.pendingDelete).map(record => ({ ...record, pendingDelete: false })));
     }
 
+    dirtyKeys.clear();
     changedCount = 0;
-    setCurrentRecords(records.filter(record => !record.pendingDelete));
     recordList.setDeleteMode(false);
     mobile.deleteModeButton.textContent = '編輯';
     syncChangedCount();
+    await loadCurrentRecords();
     machine.change('idle');
   } catch (error) {
     machine.change('error', { message: error.message });
@@ -206,6 +215,8 @@ async function saveChanges() {
 }
 
 async function cancelChanges() {
+  if (isRecording) return;
+  dirtyKeys.clear();
   changedCount = 0;
   recordList.setDeleteMode(false);
   mobile.deleteModeButton.textContent = '編輯';
@@ -215,6 +226,7 @@ async function cancelChanges() {
 }
 
 async function addSpeaker() {
+  if (isRecording) return;
   const name = prompt('請輸入新增錄音者名稱');
   if (name === null) return;
 
@@ -245,6 +257,12 @@ async function initializeStorage() {
 async function loadCurrentRecords() {
   const speaker = speakerManager.getActiveSpeaker();
   if (!speaker) return;
+
+  const key = getCurrentKey();
+  if (dirtyKeys.has(key)) {
+    setCurrentRecords(recordsByKey.get(key) || []);
+    return;
+  }
 
   const records = await storage.getRecordingsBySpeakerAndPhonetic(speaker.id, selectedPhonetic);
   setCurrentRecords(records.map(record => ({ ...record, pendingDelete: false })));
@@ -278,6 +296,7 @@ function createMobilePhoneticButtons() {
 }
 
 async function selectPhonetic(symbol) {
+  if (isRecording) return;
   selectedPhonetic = symbol;
   currentSymbol.textContent = symbol;
   mobile.currentSymbol.textContent = symbol;
@@ -329,7 +348,7 @@ function renderMobileRecords(records) {
     if (machine.currentState === 'delete_mode') {
       item.addEventListener('click', () => {
         record.pendingDelete = !record.pendingDelete;
-        markChanged();
+        markChanged(getCurrentKey());
         setCurrentRecords(records);
       });
     }
@@ -365,14 +384,15 @@ function syncMobileSpeaker() {
   mobile.speakerDate.textContent = `${speaker.createdAt.replaceAll('-', '/')} 建立`;
 }
 
-function markChanged() {
-  changedCount += 1;
+function markChanged(key) {
+  dirtyKeys.add(key);
+  changedCount = dirtyKeys.size;
   syncChangedCount();
   machine.change('pending_save');
 }
 
 function syncChangedCount() {
-  mobile.changeCount.textContent = `已修改 ${changedCount} 筆資料`;
+  mobile.changeCount.textContent = `已修改 ${changedCount} 組資料`;
 }
 
 function setRecordingUi(recording) {
@@ -391,6 +411,7 @@ function setRecordButtonsDisabled(disabled) {
 
 function startRecordTimer() {
   stopRecordTimer();
+  mobile.recordTimer.textContent = '00:00';
   recordTimerId = window.setInterval(() => {
     const seconds = Math.floor((Date.now() - recordStartTime) / 1000);
     const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
